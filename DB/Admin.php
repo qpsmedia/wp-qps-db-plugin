@@ -5,10 +5,10 @@ namespace QPS\DB;
 use WP_Post;
 use Exception;
 use QPS\DB\Helpers;
+use QPS\DB\Logger;
 use QPS\DB\YouTube;
 use QPS\DB\YouTubePost;
-use Symfony\Component\Process\Exception\ProcessFailedException;
-use Symfony\Component\Process\Process;
+use Symfony\Component\Process\PhpExecutableFinder;
 
 class Admin
 {
@@ -162,27 +162,10 @@ class Admin
         $postSettings['status'] = 'uploading';
         $youtubePost->updatePostSettings($postSettings);
 
-        // $process = new Process([
-        //     '/usr/local/bin/wp',
-        //     'wp', 'qps', 'db', 'youtube', 'upload',
-        //     '--privacy', $uploadSettings['privacy'],
-        //     '--title', $uploadSettings['title'],
-        //     '--description', (string)@$uploadSettings['description'],
-        //     '--path', ABSPATH,
-        //     $filepath
-        // ]);
+        $phpBinaryFinder = new PhpExecutableFinder();
+        $phpBinaryPath = $phpBinaryFinder->find();
 
-        // try {
-        //     $process->mustRun();
-
-        //     echo $process->getOutput();
-        // } catch (ProcessFailedException $exception) {
-        //     echo $exception->getMessage();
-        // }
-
-        $PHP = WP_DEBUG ? '/usr/local/opt/php@8.0/bin/php' : '';
-
-        $command = "$PHP /usr/local/bin/wp qps db youtube upload " .
+        $command = "$phpBinaryPath /usr/local/bin/wp qps db youtube upload " .
             '--privacy="' . $uploadSettings['privacy'] . '" ' .
             '--title="' . Helpers::safeCLIArg($uploadSettings['title']) . '" ' .
             '--description="' . Helpers::safeCLIArg($uploadSettings['description']) . '" ' .
@@ -190,20 +173,22 @@ class Admin
             $filepath .
             ' | ' .
             'xargs -I{} ' .
-            "$PHP /usr/local/bin/wp qps db youtube attachToPost {} " .
+            "$phpBinaryPath /usr/local/bin/wp qps db youtube attachToPost {} " .
             '--post_id="' . $post->ID . '" ' .
             '--path="' . ABSPATH . '"';
 
         $command = $command . ' > ' . WP_CONTENT_DIR . '/cache/qpsdb-youtube.log 2>&1 & echo $!';
 
-        $result = exec($command);
+        $logger = Logger::getLogger();
+        $logger->debug($command);
 
-        if ($result === false) {
-            exit(json_encode([
-                'success' => 0,
-                'message' => "Command failed.",
-            ]));
-        }
+        // $result = exec($command);
+        // if ($result === false) {
+        //     exit(json_encode([
+        //         'success' => 0,
+        //         'message' => "Command failed.",
+        //     ]));
+        // }
 
         exit(json_encode([
             'success' => 1,
