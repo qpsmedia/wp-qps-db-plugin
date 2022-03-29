@@ -190,7 +190,7 @@ class Admin
             $filepath .
             ' | ' .
             'xargs -I{} ' .
-            '$PHP /usr/local/bin/wp qps db youtube attachToPost {} ' .
+            "$PHP /usr/local/bin/wp qps db youtube attachToPost {} " .
             '--post_id="' . $post->ID . '" ' .
             '--path="' . ABSPATH . '"';
 
