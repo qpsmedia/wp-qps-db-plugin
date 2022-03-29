@@ -1,0 +1,40 @@
+{
+    "name": "qpsmedia/wp-qps-db-plugin",
+    "description": "Allows uploading of video media assets to YouTube.",
+    "type": "wordpress-plugin",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "QPS Media",
+            "email": "qpsmedia@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "QPS\\DB\\": "DB"
+        }
+    },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.6.1",
+        "php-stubs/wordpress-stubs": "^5.7",
+        "szepeviktor/phpstan-wordpress": "^1.0"
+    },
+    "scripts": {
+        "phpstan": "php -d memory_limit=-1 ./vendor/bin/phpstan analyse",
+        "phpcbf": "vendor/bin/phpcbf --standard=./.phpcs.xml ./",
+        "phpcs":  "vendor/bin/phpcs  -s --standard=./.phpcs.xml ./",
+        "phpcompat": "vendor/bin/phpcs --standard=PHPCompatibility --runtime-set testVersion 8.0.13 ./",
+        "phpunit": "vendor/bin/phpunit ./tests/unit/",
+        "coverage": "vendor/bin/phpunit tests/unit --coverage-html coverage --whitelist src/",
+        "lint": "vendor/bin/parallel-lint --exclude vendor .",
+        "test": [
+            "composer validate --strict",
+            "@phpcs",
+            "@phpstan"
+        ]
+    },
+    "require": {
+        "google/apiclient": "^2.12",
+        "symfony/process": "^6.0"
+    }
+}

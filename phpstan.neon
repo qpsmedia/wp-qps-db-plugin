@@ -1,0 +1,14 @@
+includes:
+    # Include this extension
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+parameters:
+    level: 5
+    inferPrivatePropertyTypeFromConstructor: true
+    paths:
+        - DB
+        - qps-db.php
+    bootstrapFiles:
+        - phpstan.constants.php
+    ignoreErrors:
+        - '#Google\\#'
+        - '#WP_CLI#'

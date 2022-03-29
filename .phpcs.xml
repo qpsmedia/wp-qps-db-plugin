@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<ruleset name="PSR12 Coding Standards">
+    <description>A custom set of code standard rules</description>
+
+    <rule ref="PSR12"/>
+    <rule ref="Generic.Arrays.DisallowLongArraySyntax"/>
+
+    <rule ref="Generic.Files.LineLength.TooLong">
+        <exclude-pattern>partials/*</exclude-pattern>
+    </rule>
+
+    <rule ref="PSR1.Files.SideEffects.FoundWithSymbols">
+        <exclude-pattern>qps-db.php</exclude-pattern>
+    </rule>
+
+    <file>DB/</file>
+    <file>qps-db.php</file>
+
+    <exclude-pattern>partials/backend/admin_head.php</exclude-pattern>
+    <exclude-pattern>partials/metaboxes/youtube/*.php</exclude-pattern>
+    <exclude-pattern>vendor/*</exclude-pattern>
+    <exclude-pattern>node_modules/*</exclude-pattern>
+    <exclude-pattern>assets/*</exclude-pattern>
+    <exclude-pattern>*\.(?!php$)</exclude-pattern>
+</ruleset>
