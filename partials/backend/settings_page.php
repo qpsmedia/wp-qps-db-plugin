@@ -17,7 +17,7 @@
             <span style="color:red">NOT CONNECTED</span>
             <button type="button" onclick="qpss3_connect(this);" class="button">
                 Connect to
-                <img src="<?= plugins_url("assets/images/yt_logo_rgb_light.png", __DIR__ . '/../../index.php') ?>" width="60" />
+                <img src="<?= plugins_url("assets/images/yt_logo_rgb_light.png", __DIR__ . '/../../index.php') ?>?20220330" width="60" />
             </button>
         </p>
     <?php else : ?>
