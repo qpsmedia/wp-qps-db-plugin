@@ -144,18 +144,12 @@ class Admin
         }
 
         // Get the s3fs filepath of the upload URL
-        $filepath = $post->post_excerpt;
-        $filepath = '/mnt/s3/' . substr($filepath, strpos($filepath, 'uploads/'));
-
-        if (WP_DEBUG) {
-            $uploadSettings['privacy'] = 'unlisted';
-            $filepath = WP_CONTENT_DIR . '/uploads/road-trauma-for-a-paramedic.mp4';
-        }
+        $filepath = get_attached_file($post->ID);
 
         if (!file_exists($filepath)) {
             exit(json_encode([
                 'success' => 0,
-                'message' => "File not found in DropBox. Cannot upload to YouTube.",
+                'message' => "File not found. Cannot upload to YouTube.",
             ]));
         }
 
