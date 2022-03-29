@@ -126,7 +126,6 @@ class YouTube
      */
     public function upload($args = null, $assoc_args = null): void
     {
-        $args[0] = $filepath = WP_CONTENT_DIR . '/uploads/road-trauma-for-a-paramedic.mp4';
         if (!file_exists($args[0])) {
             WP_CLI::error('Video file not found at filepath "' . $args[0] . '".');
         }
