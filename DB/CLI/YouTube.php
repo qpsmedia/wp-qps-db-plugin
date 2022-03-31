@@ -76,7 +76,12 @@ class YouTube
         }
         $youtubePost->updatePostSettings($postSettings);
 
-        $status = $this->handleUpload($filepath, $postSettings['title'], $postSettings['description'], $postSettings['privacy']);
+        $status = $this->handleUpload(
+            $filepath,
+            $postSettings['title'],
+            $postSettings['description'],
+            $postSettings['privacy']
+        );
 
         if (!$status instanceof Video) {
             $postSettings['status'] = '';
@@ -135,7 +140,12 @@ class YouTube
 
         $videoPath = $args[0];
 
-        $status = handleUpload($videoPath);
+        $status = $this->handleUpload(
+            $videoPath,
+            $assoc_args['title'],
+            $assoc_args['description'],
+            $assoc_args['privacy']
+        );
 
         if ($status instanceof Video) {
             WP_CLI::line($status->getId());
