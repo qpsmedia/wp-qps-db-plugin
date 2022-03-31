@@ -8,9 +8,7 @@ use QPS\DB\Helpers;
 use QPS\DB\Logger;
 use QPS\DB\YouTube;
 use QPS\DB\YouTubePost;
-use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\PhpExecutableFinder;
-use Symfony\Component\Process\Process;
 
 class Admin
 {
