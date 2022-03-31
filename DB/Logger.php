@@ -7,10 +7,15 @@ use Monolog\Handler\StreamHandler;
 
 class Logger
 {
+    protected static MonologLogger $logger;
+
     public static function getLogger(): MonologLogger
     {
-        $logger = new MonologLogger('name');
-        $logger->pushHandler(new StreamHandler(WP_CONTENT_DIR . '/cache/qpsdb-logs.log'));
-        return $logger;
+        if (!isset(self::$logger)) {
+            self::$logger = new MonologLogger('name');
+            self::$logger->pushHandler(new StreamHandler(WP_CONTENT_DIR . '/cache/qpsdb-logs.log'));
+        }
+
+        return self::$logger;
     }
 }

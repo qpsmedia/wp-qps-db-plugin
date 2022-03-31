@@ -9,6 +9,11 @@ class Helpers
         return isset($array[$key]) ? $array[$key] : $default;
     }
 
+    public static function arrayOnly(array $array, $keys): array
+    {
+        return array_intersect_key($array, array_flip((array) $keys));
+    }
+
     public static function requireWith(string $filepath, array $vars = []): string
     {
         extract($vars);

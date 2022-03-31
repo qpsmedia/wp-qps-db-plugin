@@ -2,11 +2,13 @@
 
 namespace QPS\DB\CLI;
 
+use Exception;
 use Google\Http\MediaFileUpload;
 use Google\Service\YouTube as YTAPI;
 use Google\Service\YouTube\Video;
 use Google\Service\YouTube\VideoSnippet;
 use Google\Service\YouTube\VideoStatus;
+use QPS\DB\Helpers;
 use QPS\DB\YouTube as YTHelper;
 use QPS\DB\YouTubePost;
 use WP_CLI;
@@ -18,53 +20,23 @@ use WP_CLI;
  */
 class YouTube
 {
-    /**
-     * Connect with the YouTube API
-     *
-     * @param array|null $args The arguments.
-     * @param array|null $assoc_args The associative arguments.
-     *
-     * @return void
-     */
-    public function connect($args = null, $assoc_args = null): void
-    {
-        // // https://developers.google.com/docs/api/quickstart/php
-        // $json = json_decode(file_get_contents(ABSPATH . \QPS\S3\YouTube::YT_CREDENTIALS), true);
-        // $json['expires_in'] = $json['token_response']['expires_in'];
-
-        // $client = new \Google\Client();
-        // $client->setAuthConfig(ABSPATH . \QPS\S3\YouTube::YT_SECRETS);
-        // $client->setAccessType('offline');
-        // $client->setAccessToken($json);
-        // $client->setScopes($json['token_response']['scope']);
-
-        // Request authorization from the user.
-        $youtube = new YTHelper();
-        $authUrl = $youtube->getCLIAuthUrl();
-
-        WP_CLI::log("Open the following link in your browser:");
-        WP_CLI::log($authUrl);
-        WP_CLI::log('Enter verification code: ');
-        $authCode = trim(fgets(STDIN));
-
-        // Exchange authorization code for an access token.
-        $accessToken = $youtube->getClient()->fetchAccessTokenWithAuthCode($authCode);
-        $youtube->saveAccessToken($accessToken);
-
-        WP_CLI::success("Access token saved successfully.");
-    }
-
-    /**
+     /**
      * Attach a youtube URL to a given post.
-     * Usage: wp qps s3 youtube attachToPost --post_id=40 https://youtu.be/foobar
+     * Usage: wp qps db youtube uploadPost --privacy=unlisted 40300
      *
      * ## OPTIONS
      *
      * <ID>
-     * : ID of the YouTube video to attach to this point.
+     * : ID of the post to upload.
      *
-     * --post_id=<post_id>
-     * : Post ID to attach the video to
+     * --privacy=<privacy>
+     * : One of 'public', 'private', 'unlisted'.
+     * ---
+     * default: unlisted
+     * options:
+     *   - unlisted
+     *   - public
+     *   - private
      * ---
      *
      * @param array|null $args The arguments.
@@ -72,23 +44,54 @@ class YouTube
      *
      * @return void
      */
-    public function attachToPost($args = null, $assoc_args = null): void
+    public function uploadPost($args = null, $assoc_args = null): void
     {
-        if (count($args) !== 1) {
-            WP_CLI::error("Syntax: wp qps s3 youtube complete --post_id='your_post_id' <your video id>");
-        }
+        $post = get_post(intval($args[0]));
 
-        $post = get_post(intval(@$assoc_args['post_id']));
         if (!$post) {
-            WP_CLI::error("Invalid Post ID.");
+            WP_CLI::error("Attachment not found.");
+        } elseif ($post->post_type != 'attachment') {
+            WP_CLI::error("Post is not an attachment.");
+        } elseif (get_post_mime_type($post) !== 'video/mp4') {
+            WP_CLI::error("Post is not a video attachment.");
         }
 
-        $youtube = new YouTubePost($post);
-        $youtube->setPostVideo($args[0]);
+        // Get the s3fs filepath of the upload URL
+        $filepath = get_attached_file($post->ID);
+        if (!file_exists($filepath)) {
+            WP_CLI::error("File not found. Cannot upload to YouTube.");
+        }
+
+        $postSettings = Helpers::arrayOnly($assoc_args, ['privacy']);
+        $postSettings['title'] = $post->post_title;
+        $postSettings['description'] = $post->post_content;
+        $postSettings['status'] = 'uploading';
+
+        $youtubePost = new YouTubePost($post);
+
+        try {
+            $youtubePost->validateUploadSettings($postSettings);
+        } catch (Exception $e) {
+            WP_CLI::error($e->getMessage());
+        }
+        $youtubePost->updatePostSettings($postSettings);
+
+        $status = $this->handleUpload($filepath, $postSettings['title'], $postSettings['description'], $postSettings['privacy']);
+
+        if (!$status instanceof Video) {
+            $postSettings['status'] = '';
+            $youtubePost->updatePostSettings($postSettings);
+
+            ob_start();
+            var_dump($status);
+            WP_CLI::error(ob_get_clean());
+        }
+
+        $youtubePost->setPostVideo($status->getId());
 
         WP_CLI::success(
             "Video for post '" . htmlspecialchars($post->post_title) . "' " .
-            "set to '" . htmlspecialchars($args[0]) . "'."
+            "set to '" . $status->getId() . "'."
         );
     }
 
@@ -132,6 +135,19 @@ class YouTube
 
         $videoPath = $args[0];
 
+        $status = handleUpload($videoPath);
+
+        if ($status instanceof Video) {
+            WP_CLI::line($status->getId());
+        } else {
+            ob_start();
+            var_dump($status);
+            WP_CLI::error(ob_get_clean());
+        }
+    }
+
+    protected function handleUpload(string $filepath, string $title, string $description, string $privacy)
+    {
         $YTHelper = new YTHelper();
         $client = $YTHelper->getClient();
         // Setting the defer flag to true tells the client to return a request which can be called
@@ -139,11 +155,11 @@ class YouTube
         $client->setDefer(true);
 
         $snippet = new VideoSnippet();
-        $snippet->setTitle($assoc_args['title']);
-        $snippet->setDescription($assoc_args['description']);
+        $snippet->setTitle($title);
+        $snippet->setDescription($description);
 
         $status = new VideoStatus();
-        $status->privacyStatus = $assoc_args['privacy'];
+        $status->privacyStatus = $privacy;
 
         $video = new Video();
         $video->setSnippet($snippet);
@@ -153,7 +169,8 @@ class YouTube
         // reliable connection as fewer chunks lead to faster uploads. Set a lower
         // value for better recovery on less reliable connections.
         $chunkSizeBytes = 1 * 1024 * 1024;
-        $chunks = ceil(filesize($videoPath) / $chunkSizeBytes);
+        $filesize = filesize($filepath);
+        $chunks = ceil($filesize / $chunkSizeBytes);
 
         // Create a request for the API's videos.insert method to create and upload the video.
         $youtube = new YTAPI($client);
@@ -169,11 +186,11 @@ class YouTube
             $chunkSizeBytes
         );
 
-        $media->setFileSize(filesize($videoPath));
+        $media->setFileSize($filesize);
 
         // Read the media file and upload it.
         $status = false;
-        $handle = fopen($videoPath, "rb");
+        $handle = fopen($filepath, "rb");
 
         $progress = \WP_CLI\Utils\make_progress_bar("Uploading video", $chunks);
 
@@ -192,12 +209,6 @@ class YouTube
 
         $client->setDefer(false);
 
-        if ($status instanceof Video) {
-            WP_CLI::line($status->getId());
-        } else {
-            ob_start();
-            var_dump($status);
-            WP_CLI::error(ob_get_clean());
-        }
+        return $status;
     }
 }

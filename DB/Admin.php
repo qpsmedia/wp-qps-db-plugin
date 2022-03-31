@@ -8,7 +8,9 @@ use QPS\DB\Helpers;
 use QPS\DB\Logger;
 use QPS\DB\YouTube;
 use QPS\DB\YouTubePost;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\PhpExecutableFinder;
+use Symfony\Component\Process\Process;
 
 class Admin
 {
@@ -145,7 +147,6 @@ class Admin
 
         // Get the s3fs filepath of the upload URL
         $filepath = get_attached_file($post->ID);
-
         if (!file_exists($filepath)) {
             exit(json_encode([
                 'success' => 0,
@@ -153,40 +154,45 @@ class Admin
             ]));
         }
 
-        $postSettings['status'] = 'uploading';
-        $youtubePost->updatePostSettings($postSettings);
-
         $phpBinaryFinder = new PhpExecutableFinder();
         $phpBinaryPath = $phpBinaryFinder->find();
 
-        $command = "$phpBinaryPath /usr/local/bin/wp qps db youtube upload " .
+        $command = "$phpBinaryPath /usr/local/bin/wp qps db youtube uploadPost " .
             '--privacy="' . $uploadSettings['privacy'] . '" ' .
-            '--title="' . Helpers::safeCLIArg($uploadSettings['title']) . '" ' .
-            '--description="' . Helpers::safeCLIArg($uploadSettings['description']) . '" ' .
             '--path="' . ABSPATH . '" ' .
-            $filepath .
-            ' | ' .
-            'xargs -I{} ' .
-            "$phpBinaryPath /usr/local/bin/wp qps db youtube attachToPost {} " .
-            '--post_id="' . $post->ID . '" ' .
-            '--path="' . ABSPATH . '"';
+            $post->ID;
+
+        // $command = "$phpBinaryPath /usr/local/bin/wp qps db youtube upload " .
+        //     '--privacy="' . $uploadSettings['privacy'] . '" ' .
+        //     '--title="' . Helpers::safeCLIArg($uploadSettings['title']) . '" ' .
+        //     '--description="' . Helpers::safeCLIArg($uploadSettings['description']) . '" ' .
+        //     '--path="' . ABSPATH . '" ' .
+        //     $filepath .
+        //     ' | ' .
+        //     'xargs -I{} ' .
+        //     "$phpBinaryPath /usr/local/bin/wp qps db youtube attachToPost {} " .
+        //     '--post_id="' . $post->ID . '" ' .
+        //     '--path="' . ABSPATH . '"';
 
         $command = $command . ' > ' . WP_CONTENT_DIR . '/cache/qpsdb-youtube.log 2>&1 & echo $!';
 
-        $logger = Logger::getLogger();
-        $logger->debug($command);
+        Logger::getLogger()->debug($command);
 
-        // $result = exec($command);
-        // if ($result === false) {
-        //     exit(json_encode([
-        //         'success' => 0,
-        //         'message' => "Command failed.",
-        //     ]));
-        // }
+        // Set to 'uploading' status
+        $postSettings['status'] = 'uploading';
+        $youtubePost->updatePostSettings($postSettings);
+
+        $result = exec($command);
+        if ($result === false) {
+            exit(json_encode([
+                'success' => 0,
+                'message' => "Command failed.",
+            ]));
+        }
 
         exit(json_encode([
             'success' => 1,
-            'message' => $command
+            'message' => ''
         ]));
     }
 }

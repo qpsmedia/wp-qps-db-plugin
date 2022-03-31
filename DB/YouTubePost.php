@@ -9,7 +9,7 @@ use QPS\DB\YouTube;
 class YouTubePost
 {
     public WP_Post $post;
-    public const POST_SETTINGS_META = 'qpss3_yt_settings';
+    public const POST_SETTINGS_META = 'qpsdb_yt_settings';
 
     public const PRIVACY_PUBLIC = 'public';
     public const PRIVACY_UNLISTED = 'unlisted';
