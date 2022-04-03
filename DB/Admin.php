@@ -101,6 +101,7 @@ class Admin
         exit(json_encode([
             'success' => 1,
             'message' => $postSettings,
+            'generated' => date('r') . '-' . gethostname(),
         ]));
     }
 
