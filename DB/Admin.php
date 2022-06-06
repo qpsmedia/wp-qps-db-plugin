@@ -108,7 +108,6 @@ class Admin
 
     public function ajaxYTUpload()
     {
-        ini_set('display_errors', 'true');
         header('Content-Type: application/json');
         $id = intval(Helpers::GET('id'));
         $post = get_post($id);
